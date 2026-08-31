@@ -1,7 +1,14 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
-import type { RGBA } from "@opentui/core"
 import { createSignal } from "solid-js"
 import { createTpsMeter, type TpsMeter } from "./meter.ts"
+import {
+  MAX_TRACKED_SESSIONS,
+  TICK_MS,
+  contributors,
+  generatedTokens,
+  segments as buildSegments,
+  type Segment,
+} from "./readout.ts"
 
 /**
  * Renders live prefill and decode throughput to the right of the session prompt.
@@ -32,32 +39,6 @@ import { createTpsMeter, type TpsMeter } from "./meter.ts"
  * the total, not a per-agent figure to be multiplied, and the colour bands apply to
  * that total.
  */
-
-const TICK_MS = 200
-const MAX_TRACKED_SESSIONS = 32
-
-/**
- * Colour bands. Decode boundaries match the Claude Code statusline
- * (~/.claude/statusline-command.sh); prefill runs one to two orders of magnitude
- * faster so it gets its own. Fixed hex rather than theme.success/warning/error so
- * the bands really do read as green/orange/red on every theme.
- */
-const FAST_DECODE = 50
-const OK_DECODE = 25
-const FAST_PREFILL = 2000
-const OK_PREFILL = 500
-const FAST_COLOUR = "#3fb950"
-const OK_COLOUR = "#e3861b"
-const SLOW_COLOUR = "#f85149"
-
-const format = (rate: number) => {
-  if (rate >= 1000) return `${(rate / 1000).toFixed(1)}k`
-  if (rate >= 100) return rate.toFixed(0)
-  return rate.toFixed(1)
-}
-
-const band = (rate: number, fast: number, ok: number) =>
-  rate >= fast ? FAST_COLOUR : rate >= ok ? OK_COLOUR : SLOW_COLOUR
 
 export async function mount(api: TuiPluginApi) {
   const [version, setVersion] = createSignal(0)
@@ -129,9 +110,6 @@ export async function mount(api: TuiPluginApi) {
     }
     return chars
   }
-
-  /** Tokens the model generated for a message: visible output plus reasoning. */
-  const generatedTokens = (tokens: any) => (tokens?.output ?? 0) + (tokens?.reasoning ?? 0)
 
   /**
    * Predict how many tokens the current prompt holds, before the provider says so.
@@ -237,97 +215,16 @@ export async function mount(api: TuiPluginApi) {
     offMessage()
   })
 
-  /**
-   * Which meters the readout speaks for.
-   *
-   * Viewing a session that is itself generating (including a subagent you clicked
-   * into) reports that session alone. Viewing a parent that is parked on a tool call
-   * reports every descendant that is generating, summed - on a single local GPU the
-   * aggregate is the number that matches what the server is doing.
-   */
-  const contributors = (routed: string): TpsMeter[] => {
-    const own = meters.get(routed)
-    if (own?.active) return [own]
-
-    const active: TpsMeter[] = []
-    for (const sessionID of descendants(routed)) {
-      const meter = meters.get(sessionID)
-      if (meter?.active) active.push(meter)
-    }
-    return active.length ? active : own ? [own] : []
-  }
-
-  type Segment = [string, string | RGBA]
-
-  /** The longest of a set of possibly-absent durations, rendered as muted seconds. */
-  const longestWait = (values: Array<number | undefined>): Segment[] => {
-    const defined = values.filter((value): value is number => value !== undefined)
-    if (!defined.length) return []
-    return [[`↑ ${Math.max(...defined).toFixed(1)}s`, api.theme.current.textMuted]]
-  }
-
   /** [text, colour] pairs making up the readout, empty while there is nothing to show. */
   const segments = (): Segment[] => {
     version() // subscribe to the tick signal: re-render on every poll
-    const muted = api.theme.current.textMuted
     const routed = routedSession()
     if (!routed) return []
-
-    const active = contributors(routed)
-    if (!active.length) return []
-
-    // Nothing has produced a token yet: show the longest prefill wait in flight.
-    const decoding = active.filter((meter) => meter.live !== undefined)
-    if (!decoding.length) {
-      const waiting = longestWait(active.map((meter) => meter.prefillElapsed))
-      if (waiting.length) return waiting
-    }
-
-    const parts: Segment[] = []
-    const reporting = decoding.length ? decoding : active
-
-    // One pass for both rates: every meter contributes to each total, and each
-    // total carries a flag saying whether any contribution was an estimate.
-    let prefillTotal = 0
-    let prefillKnown = false
-    let prefillExact = true
-    let decodeTotal = 0
-    let decodeKnown = false
-    let decodeExact = true
-    for (const meter of reporting) {
-      const prefill = meter.prefill
-      if (prefill !== undefined) {
-        prefillTotal += prefill
-        prefillKnown = true
-        if (!meter.prefillExact) prefillExact = false
-      }
-      const decode = meter.decode
-      if (decode !== undefined) {
-        decodeTotal += decode
-        decodeKnown = true
-        if (!meter.decodeExact) decodeExact = false
-      }
-    }
-
-    if (prefillKnown) {
-      parts.push([
-        `↑ ${prefillExact ? "" : "~"}${format(prefillTotal)} tok/s`,
-        band(prefillTotal, FAST_PREFILL, OK_PREFILL),
-      ])
-    } else {
-      // No previous turn to predict the prompt size from: report plain TTFT instead.
-      parts.push(...longestWait(reporting.map((meter) => meter.ttftSeconds)))
-    }
-    if (decodeKnown) {
-      parts.push([`↓ ${decodeExact ? "" : "~"}${format(decodeTotal)} tok/s`, band(decodeTotal, FAST_DECODE, OK_DECODE)])
-    }
-
-    const joined = parts.flatMap((part, index): Segment[] => (index ? [[" · ", muted], part] : [part]))
-    // Say so when the figures are a sum across several agents rather than one session.
-    // Spelled out rather than "×N", which reads as a multiplier applied to the number
-    // shown instead of a count of what was added together.
-    if (joined.length && reporting.length > 1) joined.push([` (${reporting.length} agents)`, muted])
-    return joined
+    const active = contributors(
+      meters.get(routed),
+      descendants(routed).map((sessionID) => meters.get(sessionID)),
+    )
+    return buildSegments(active, api.theme.current.textMuted)
   }
 
   api.slots.register({

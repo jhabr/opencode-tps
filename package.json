@@ -9,10 +9,10 @@
   "files": [
     "tps.ts",
     "tps-ui.tsx",
-    "tps-v2.tsx",
     "index.ts",
     "tui.tsx",
-    "meter.ts"
+    "meter.ts",
+    "readout.ts"
   ],
   "engines": {
     "opencode": ">=1.18.0"
