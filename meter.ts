@@ -39,6 +39,7 @@ type Stream = {
   lastGrowthAt: number
   lastSampleAt: number
   createdAt: number
+  busy: boolean
   ttftMs?: number
 }
 
@@ -88,7 +89,7 @@ export function createTpsMeter(now: () => number = Date.now) {
     let current = stream
     if (!current || current.messageID !== messageID) {
       samples = []
-      current = { messageID, chars, activeMs: 0, lastGrowthAt: time, lastSampleAt: time, createdAt }
+      current = { messageID, chars, activeMs: 0, lastGrowthAt: time, lastSampleAt: time, createdAt, busy }
       stream = current
       finalDecode = undefined
       finalPrefill = undefined
@@ -110,6 +111,7 @@ export function createTpsMeter(now: () => number = Date.now) {
       current.chars = chars
     }
     current.lastSampleAt = time
+    current.busy = busy
 
     // The window is a queue and only its oldest entry is ever read, so expired
     // samples are always a prefix.
@@ -162,9 +164,15 @@ export function createTpsMeter(now: () => number = Date.now) {
     live = undefined
   }
 
-  /** Seconds spent prefilling so far, while no output has been seen yet. */
+  /**
+   * Seconds spent prefilling so far, while no output has been seen yet.
+   *
+   * Gated on the session being busy: a message that never completed (abort, crash)
+   * would otherwise keep counting from its original creation time forever, showing
+   * a wait of tens of thousands of seconds when its session is reopened later.
+   */
   const prefillElapsed = () => {
-    if (!stream || stream.ttftMs !== undefined) return undefined
+    if (!stream || !stream.busy || stream.ttftMs !== undefined) return undefined
     return (now() - stream.createdAt) / 1000
   }
 
