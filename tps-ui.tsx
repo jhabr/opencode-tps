@@ -1,4 +1,5 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
+import type { RGBA } from "@opentui/core"
 import { createSignal } from "solid-js"
 import { createTpsMeter, type TpsMeter } from "./meter.ts"
 
@@ -256,15 +257,17 @@ export async function mount(api: TuiPluginApi) {
     return active.length ? active : own ? [own] : []
   }
 
+  type Segment = [string, string | RGBA]
+
   /** The longest of a set of possibly-absent durations, rendered as muted seconds. */
-  const longestWait = (values: Array<number | undefined>): Array<[string, string]> => {
+  const longestWait = (values: Array<number | undefined>): Segment[] => {
     const defined = values.filter((value): value is number => value !== undefined)
     if (!defined.length) return []
     return [[`↑ ${Math.max(...defined).toFixed(1)}s`, api.theme.current.textMuted]]
   }
 
   /** [text, colour] pairs making up the readout, empty while there is nothing to show. */
-  const segments = (): Array<[string, string]> => {
+  const segments = (): Segment[] => {
     version() // subscribe to the tick signal: re-render on every poll
     const muted = api.theme.current.textMuted
     const routed = routedSession()
@@ -280,7 +283,7 @@ export async function mount(api: TuiPluginApi) {
       if (waiting.length) return waiting
     }
 
-    const parts: Array<[string, string]> = []
+    const parts: Segment[] = []
     const reporting = decoding.length ? decoding : active
 
     // One pass for both rates: every meter contributes to each total, and each
@@ -319,7 +322,7 @@ export async function mount(api: TuiPluginApi) {
       parts.push([`↓ ${decodeExact ? "" : "~"}${format(decodeTotal)} tok/s`, band(decodeTotal, FAST_DECODE, OK_DECODE)])
     }
 
-    const joined = parts.flatMap((part, index): Array<[string, string]> => (index ? [[" · ", muted], part] : [part]))
+    const joined = parts.flatMap((part, index): Segment[] => (index ? [[" · ", muted], part] : [part]))
     // Say so when the figures are a sum across several agents rather than one session.
     // Spelled out rather than "×N", which reads as a multiplier applied to the number
     // shown instead of a count of what was added together.

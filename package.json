@@ -1,0 +1,48 @@
+{
+  "name": "opencode-tps",
+  "version": "0.1.0",
+  "description": "Realtime tokens/sec readout for the opencode TUI",
+  "type": "module",
+  "exports": {
+    "./tui": "./tps.ts"
+  },
+  "files": [
+    "tps.ts",
+    "tps-ui.tsx",
+    "tps-v2.tsx",
+    "index.ts",
+    "tui.tsx",
+    "meter.ts"
+  ],
+  "engines": {
+    "opencode": ">=1.18.0"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.18.0"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.18.18",
+    "@opentui/core": "^0.4.5",
+    "@opentui/solid": "^0.4.5",
+    "@types/bun": "^1.4.0",
+    "opencode-plugin-v2": "npm:@opencode-ai/plugin@0.0.0-beta-18743",
+    "solid-js": "^1.9.0",
+    "typescript": "^5.8.0"
+  },
+  "scripts": {
+    "test": "bun test"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "tui",
+    "tokens-per-second",
+    "throughput"
+  ],
+  "author": "Jaro Habr",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jhabr/opencode-tps.git"
+  }
+}
