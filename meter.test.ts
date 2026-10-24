@@ -63,3 +63,28 @@ test("prefill rate is the predicted prompt size over time to first token", () =>
   expect(meter.prefill).toBeCloseTo(2000)
   expect(meter.prefillExact).toBe(false)
 })
+
+test("an idle session whose output stopped growing settles to inactive", () => {
+  const { meter, advance } = controlledClock()
+  meter.sample({ messageID: "m1", chars: 0, busy: true, createdAt: 0, predictPromptTokens: noPrediction })
+  advance(1000)
+  meter.sample({ messageID: "m1", chars: 400, busy: true, createdAt: 0, predictPromptTokens: noPrediction })
+  expect(meter.active).toBe(true)
+  // Aborted mid-stream: the message never completes and the session goes idle.
+  advance(2000)
+  meter.sample({ messageID: "m1", chars: 400, busy: false, createdAt: 0, predictPromptTokens: noPrediction })
+  expect(meter.live).toBeUndefined()
+  expect(meter.active).toBe(false)
+})
+
+test("a newer message completing between ticks ends the tracked stream", () => {
+  const { meter, advance } = controlledClock()
+  meter.sample({ messageID: "m1", chars: 0, busy: true, createdAt: 0, predictPromptTokens: noPrediction })
+  advance(1000)
+  meter.sample({ messageID: "m1", chars: 400, busy: true, createdAt: 0, predictPromptTokens: noPrediction })
+  // m1 finished and m2 started and finished before the next tick saw either.
+  advance(200)
+  meter.complete({ messageID: "m2", outputTokens: 20, prefilledTokens: 0 })
+  expect(meter.live).toBeUndefined()
+  expect(meter.active).toBe(false)
+})

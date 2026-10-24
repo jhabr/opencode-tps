@@ -135,6 +135,13 @@ export function createTpsMeter(now: () => number = Date.now) {
     live = grown / charsPerToken / (span / 1000)
   }
 
+  const endStream = () => {
+    estimatedPrefill = undefined
+    stream = undefined
+    samples = []
+    live = undefined
+  }
+
   /** Called once the provider has reported exact token counts for a message. */
   const complete = ({
     messageID,
@@ -145,7 +152,13 @@ export function createTpsMeter(now: () => number = Date.now) {
     outputTokens: number
     prefilledTokens: number
   }) => {
-    if (!stream || stream.messageID !== messageID) return
+    if (!stream) return
+    if (stream.messageID !== messageID) {
+      // The caller always reports the newest message, so a different one completing
+      // means it started and finished between ticks: the tracked stream is over too.
+      endStream()
+      return
+    }
     if (outputTokens > 0) {
       if (stream.chars > 0) {
         const ratio = stream.chars / outputTokens
@@ -158,10 +171,7 @@ export function createTpsMeter(now: () => number = Date.now) {
     }
     finalPrefill = prefillRate(prefilledTokens, stream.ttftMs)
     lastTtftMs = stream.ttftMs
-    estimatedPrefill = undefined
-    stream = undefined
-    samples = []
-    live = undefined
+    endStream()
   }
 
   /**

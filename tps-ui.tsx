@@ -6,6 +6,7 @@ import {
   TICK_MS,
   contributors,
   generatedTokens,
+  needsSample,
   segments as buildSegments,
   type Segment,
 } from "./readout.ts"
@@ -199,7 +200,8 @@ export async function mount(api: TuiPluginApi) {
 
     feed(routed, isBusy(routed))
     for (const sessionID of descendants(routed)) {
-      if (isBusy(sessionID)) feed(sessionID, true)
+      const busy = isBusy(sessionID)
+      if (needsSample(busy, meters.get(sessionID))) feed(sessionID, busy)
     }
     prune(routed)
   }
