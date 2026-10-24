@@ -61,6 +61,15 @@ export const contributors = (
   return active.length ? active : own ? [own] : []
 }
 
+/**
+ * Whether a descendant session needs sampling this tick. A busy one does, and so
+ * does an idle one whose meter is still active: it takes a tick or two for the
+ * meter to see the completed message (or the stall) and settle. Sampling busy
+ * sessions only would freeze a finished agent's last rate on screen, still
+ * counted in "(N agents)" and still added to the sum.
+ */
+export const needsSample = (busy: boolean, meter: TpsMeter | undefined) => busy || meter?.active === true
+
 /** The longest of a set of possibly-absent durations, rendered as muted seconds. */
 const longestWait = (values: Array<number | undefined>, muted: Colour): Segment[] => {
   const defined = values.filter((value): value is number => value !== undefined)
