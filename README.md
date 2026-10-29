@@ -48,7 +48,7 @@ Register the clone with the opencode version you run. The path must be absolute;
 
 ### How it loads
 
-Both versions resolve `exports["./tui"]` in `package.json` to `dist/tps.js`, whose default export carries a hook for each: `tui` for 1.x, `setup` for 2.x. `dist/` is a committed, prebuilt bundle because opencode compiles a plugin's Solid JSX only outside `node_modules`, and a Git install lands inside it. After changing a source file, rebuild with `bun run build`; the test suite fails while `dist/` is stale.
+Both versions resolve `exports["./tui"]` in `package.json` to `dist/tps.js`, whose default export carries a hook for each: `tui` for 1.x, `setup` for 2.x. `dist/` is a committed, prebuilt bundle because opencode compiles a plugin's Solid JSX only outside `node_modules`, and a Git install lands inside it. After changing a source file, rebuild with `bun run bundle`; the test suite fails while `dist/` is stale.
 
 There is no npm package: the `opencode-tps` name on npm belongs to an unrelated package.
 

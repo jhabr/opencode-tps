@@ -7,7 +7,10 @@ import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
  * @opentui/solid calls; solid-js and @opentui/* stay external because opencode
  * substitutes its own instances at load time.
  *
- * dist/ is committed: run `bun run build` after changing a source file.
+ * dist/ is committed: run `bun run bundle` after changing a source file. The
+ * script must not be called `build`: npm prepares a Git dependency that has a
+ * build script by installing its devDependencies first, which fails inside
+ * opencode's installer.
  */
 
 const result = await Bun.build({
