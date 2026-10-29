@@ -12,48 +12,49 @@ Rates are colour banded green / orange / red so throughput is readable at a glan
 
 ## Install
 
-Register the npm package in `~/.config/opencode/tui.json` (**not** `opencode.json` - TUI plugins load from a separate config file):
+**opencode 2.x**: install straight from GitHub:
 
-```json
-{
-  "$schema": "https://opencode.ai/tui.json",
-  "plugin": ["opencode-tps"]
-}
+```bash
+opencode plugin add github:jhabr/opencode-tps
 ```
 
-opencode installs the package automatically via Bun on startup. Restart opencode, and confirm it loaded with `ctrl+p` then "Plugins". Pin a version with `opencode-tps@0.1.0` if you want updates to be explicit.
+This adds it under `plugins` in `~/.config/opencode/cli.json`. Restart opencode and confirm it loaded with `ctrl+p` then "Plugins".
 
 ### From a local clone
 
 ```bash
-git clone git@github.com:jhabr/opencode-tps.git ~/.config/opencode/tui-plugin
+git clone git@github.com:jhabr/opencode-tps.git ~/dev/opencode-tps
 ```
 
-```json
-{
-  "$schema": "https://opencode.ai/tui.json",
-  "plugin": ["file:///Users/YOUR_USER/.config/opencode/tui-plugin"]
-}
-```
+Register the clone with the opencode version you run. The path must be absolute; there is no `$HOME` expansion.
 
-The directory reference works because `package.json` declares the TUI entrypoint under `exports["./tui"]`. The path must be absolute; there is no `$HOME` expansion.
-
-### opencode 2.x
-
-The same readout ships for the opencode 2.x TUI as `tui.tsx`, reached through `v2/tui.ts`. Register the `v2` directory of a local clone under `plugins` in `~/.config/opencode/cli.json`:
+**opencode 2.x**: under `plugins` in `~/.config/opencode/cli.json`:
 
 ```json
 {
   "$schema": "https://opencode.ai/v2/cli.json",
-  "plugins": ["/Users/YOUR_USER/opencode-tps/v2"]
+  "plugins": ["/Users/YOUR_USER/dev/opencode-tps"]
 }
 ```
 
-Point at `v2`, not the repository root: v2 resolves a directory plugin through its `package.json` `exports` when it has one, and the root exports the v1 entry. Confirm with `ctrl+p` then "Plugins", where `tps` should be listed under TUI. The `~/.config/opencode/plugin/` symlink used by the 2.0 preview is no longer discovered as of v2.2.1.
+**opencode 1.x**: under `plugin` in `~/.config/opencode/tui.json` (**not** `opencode.json` - TUI plugins load from a separate config file):
+
+```json
+{
+  "$schema": "https://opencode.ai/tui.json",
+  "plugin": ["file:///Users/YOUR_USER/dev/opencode-tps"]
+}
+```
+
+### How it loads
+
+Both versions resolve `exports["./tui"]` in `package.json` to `dist/tps.js`, whose default export carries a hook for each: `tui` for 1.x, `setup` for 2.x. `dist/` is a committed, prebuilt bundle because opencode compiles a plugin's Solid JSX only outside `node_modules`, and a Git install lands inside it. After changing a source file, rebuild with `bun run bundle`; the test suite fails while `dist/` is stale.
+
+There is no npm package: the `opencode-tps` name on npm belongs to an unrelated package.
 
 ## Requirements
 
-opencode 1.18.x or later, or opencode 2.x (verified against v2.2.1). `solid-js` and `@opentui/*` are supplied by the opencode runtime, so there is nothing to install.
+opencode 1.18.x or later (verified against 1.19.5), or opencode 2.x (verified against 2.2.1). `solid-js` and `@opentui/*` are supplied by the opencode runtime, so there is nothing to install.
 
 ## How it works
 
@@ -72,12 +73,13 @@ Two behaviours worth knowing:
 
 | File | Purpose |
 | --- | --- |
-| `tps.ts` | v1 plugin entry point. Imports the UI lazily, because the server plugin loader also evaluates this file and has no JSX runtime. |
+| `tps.ts` | Entry point for both versions, bundled to `dist/tps.js`: `tui` for 1.x, `setup` for 2.x. Imports each UI lazily, because the server plugin loader also evaluates this file and has no JSX runtime. |
 | `tps-ui.tsx` | v1 UI. Samples the reactive TUI state and renders. |
-| `v2/tui.ts` | v2 entry point, a re-export of `tui.tsx`. Lives in a directory without `package.json` so the v2 loader does not resolve the root's v1 export. |
 | `tui.tsx` | v2 UI: the `tps-ui.tsx` logic ported to the v2 plugin API (content arrays, `session.family()`, slot claims). |
 | `meter.ts` | The rate maths, shared by both versions. No UI dependency, so it runs under test without a TUI. |
 | `readout.ts` | The presentation policy shared by both versions: colour bands, formatting, which meters a view speaks for, segment aggregation. |
+| `build.ts` | Bundles `tps.ts` to `dist/` with the JSX compiled; `solid-js` and `@opentui/*` stay external for opencode to provide. |
+| `dist/` | The committed bundle that `package.json` exports. Generated, do not edit. |
 
 ## Tests
 
@@ -85,7 +87,7 @@ Two behaviours worth knowing:
 bun test
 ```
 
-Covers `meter.ts` only, driven through an injected clock. `tps-ui.tsx` needs a live TUI runtime and is not tested.
+Covers `meter.ts` (driven through an injected clock), `readout.ts`, and that `dist/` matches a fresh build. The UIs need a live TUI runtime and are not tested.
 
 ## Licence
 

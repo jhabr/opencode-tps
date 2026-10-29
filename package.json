@@ -4,15 +4,10 @@
   "description": "Realtime tokens/sec readout for the opencode TUI",
   "type": "module",
   "exports": {
-    "./tui": "./tps.ts"
+    "./tui": "./dist/tps.js"
   },
   "files": [
-    "tps.ts",
-    "tps-ui.tsx",
-    "v2/tui.ts",
-    "tui.tsx",
-    "meter.ts",
-    "readout.ts"
+    "dist"
   ],
   "engines": {
     "opencode": ">=1.18.0"
@@ -30,6 +25,7 @@
     "typescript": "^5.8.0"
   },
   "scripts": {
+    "bundle": "bun build.ts",
     "test": "bun test"
   },
   "keywords": [
