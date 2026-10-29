@@ -8,7 +8,7 @@ test("dist/ is up to date with the sources", () => {
   const outdir = mkdtempSync(join(tmpdir(), "opencode-tps-dist-"))
   try {
     const build = Bun.spawnSync({ cmd: ["bun", "build.ts", outdir], cwd: import.meta.dir })
-    expect(build.exitCode).toBe(0)
+    if (build.exitCode !== 0) throw new Error(`build.ts failed:\n${build.stderr.toString()}`)
 
     const committed = join(import.meta.dir, "dist")
     const files = readdirSync(outdir).sort()
