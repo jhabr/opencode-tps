@@ -9,7 +9,7 @@
   "files": [
     "tps.ts",
     "tps-ui.tsx",
-    "index.ts",
+    "v2/tui.ts",
     "tui.tsx",
     "meter.ts",
     "readout.ts"

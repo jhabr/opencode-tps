@@ -18,8 +18,8 @@ import type { Plugin } from "opencode-plugin-v2/tui"
  *   ↓ ~28.6 tok/s                 decoding
  *   ↑ 2.7k tok/s · ↓ 28.6 tok/s   finished: exact prefill and decode rates
  *
- * The v2 loader finds this file by its literal name, next to index.ts - see
- * index.ts for how the plugin is installed. The v1 plugin for opencode 1.x lives
+ * The v2 loader reaches this file through v2/tui.ts - see there for how the
+ * plugin is installed. The v1 plugin for opencode 1.x lives
  * in tps.ts / tps-ui.tsx; all versions share meter.ts for the rate maths and
  * readout.ts for the presentation policy.
  *

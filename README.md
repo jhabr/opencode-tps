@@ -38,20 +38,22 @@ git clone git@github.com:jhabr/opencode-tps.git ~/.config/opencode/tui-plugin
 
 The directory reference works because `package.json` declares the TUI entrypoint under `exports["./tui"]`. The path must be absolute; there is no `$HOME` expansion.
 
-### opencode 2.0 (preview)
+### opencode 2.x
 
-The same readout ships for the opencode 2.0 TUI as `index.ts` / `tui.tsx`. v2 discovers plugins server side, so install by symlinking the clone into the v2 plugin directory:
+The same readout ships for the opencode 2.x TUI as `tui.tsx`, reached through `v2/tui.ts`. Register the `v2` directory of a local clone under `plugins` in `~/.config/opencode/cli.json`:
 
-```bash
-git clone git@github.com:jhabr/opencode-tps.git
-ln -s "$(pwd)/opencode-tps" ~/.config/opencode/plugin/tps
+```json
+{
+  "$schema": "https://opencode.ai/v2/cli.json",
+  "plugins": ["/Users/YOUR_USER/opencode-tps/v2"]
+}
 ```
 
-The server loads the no-op `index.ts`, notices the sibling `tui.tsx`, and hands it to the TUI, which renders the readout in the prompt footer's status cluster. Registering the file under `plugins` in `cli.json` does **not** work as of `v0.0.0-beta-18743`: that path is configured but never loaded.
+Point at `v2`, not the repository root: v2 resolves a directory plugin through its `package.json` `exports` when it has one, and the root exports the v1 entry. Confirm with `ctrl+p` then "Plugins", where `tps` should be listed under TUI. The `~/.config/opencode/plugin/` symlink used by the 2.0 preview is no longer discovered as of v2.2.1.
 
 ## Requirements
 
-opencode 1.18.x or later, or opencode 2.0 preview (verified against `v0.0.0-beta-18743`). `solid-js` and `@opentui/*` are supplied by the opencode runtime, so there is nothing to install.
+opencode 1.18.x or later, or opencode 2.x (verified against v2.2.1). `solid-js` and `@opentui/*` are supplied by the opencode runtime, so there is nothing to install.
 
 ## How it works
 
@@ -72,8 +74,8 @@ Two behaviours worth knowing:
 | --- | --- |
 | `tps.ts` | v1 plugin entry point. Imports the UI lazily, because the server plugin loader also evaluates this file and has no JSX runtime. |
 | `tps-ui.tsx` | v1 UI. Samples the reactive TUI state and renders. |
-| `index.ts` | v2 server entry point, a no-op. Exists so v2's server-side discovery finds the directory plugin and its `tui.tsx`. |
-| `tui.tsx` | v2 entry point and UI: the `tps-ui.tsx` logic ported to the v2 plugin API (content arrays, `session.family()`, slot claims). |
+| `v2/tui.ts` | v2 entry point, a re-export of `tui.tsx`. Lives in a directory without `package.json` so the v2 loader does not resolve the root's v1 export. |
+| `tui.tsx` | v2 UI: the `tps-ui.tsx` logic ported to the v2 plugin API (content arrays, `session.family()`, slot claims). |
 | `meter.ts` | The rate maths, shared by both versions. No UI dependency, so it runs under test without a TUI. |
 | `readout.ts` | The presentation policy shared by both versions: colour bands, formatting, which meters a view speaks for, segment aggregation. |
 
